@@ -1,5 +1,5 @@
 {
-  "name": "ford-cv-ui",
+  "name": "ford-cv-app",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -17,14 +17,17 @@
     "lucide-react": "^0.553.0",
     "mammoth": "^1.11.0",
     "pizzip": "^3.2.0",
+    "node-fetch": "^2.7.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "node server.js",
-    "build": "react-scripts build"
+     "start": "node server.js",
+    "build": "react-scripts build",
+    "dev:client": "react-scripts start",
+    "dev:server": "node server.js"
   },
   "eslintConfig": {
     "extends": [
