@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const fetch = require('node-fetch'); // Make sure node-fetch is installed
+//const fetch = require('node-fetch'); // Make sure node-fetch is installed
 
 const app = express();
 app.use(cors());
@@ -118,7 +118,7 @@ app.post('/api/parse-resume', async (req, res) => {
 app.use(express.static(path.join(__dirname, 'build')));
 
 // Catch-all for React router
-app.get('*', (req, res) => {
+app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
