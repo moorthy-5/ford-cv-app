@@ -362,6 +362,7 @@ const CVTemplateApp = () => {
   "overallExperience": "total years of experience (e.g., '7.4 years')",
   "coreSkillExperience": "years in primary technology",
   "qualifications": "certifications or qualifications",
+  "hackerRankScore": "hacker rank score as percentage only (e.g., '85' without % symbol)",
   "skill1": "top skill 1",
   "skill2": "top skill 2",
   "skill3": "top skill 3",
@@ -464,9 +465,24 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
       setParsedObject(parsed);
       setParsedResponseRaw(JSON.stringify(data, null, 2));
 
-      const getParsedOrExisting = (candidates, existingVal) => {
+
+        const getParsedOrExisting = (candidates, existingVal) => {
         const v = pickFirst(parsed, candidates);
         return (v !== undefined && v !== null && String(v).trim() !== '') ? v : existingVal;
+      };
+
+      // Helper to safely convert additionalDetails to string
+      const safeAdditionalDetails = (value) => {
+        if (!value) return '';
+        if (typeof value === 'string') return value.trim();
+        if (typeof value === 'object') {
+          try {
+            return JSON.stringify(value, null, 2);
+          } catch (e) {
+            return '';
+          }
+        }
+        return String(value);
       };
 
       const parsedForm = {
@@ -484,7 +500,7 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
         masterDuration: getParsedOrExisting(['masterDuration', 'master_duration'], formData.masterDuration),
         masterDetails: getParsedOrExisting(['masterDetails', 'master_details'], formData.masterDetails),
         employmentHistory: (parsed.employmentHistory && parsed.employmentHistory.length > 0) ? parsed.employmentHistory : (parsed.employment_history && parsed.employment_history.length > 0) ? parsed.employment_history : (parsed.employment && parsed.employment.length > 0) ? parsed.employment : formData.employmentHistory,
-        additionalDetails: getParsedOrExisting(['additionalDetails', 'additional_details', 'otherDetails', 'additionalInfo'], formData.additionalDetails) || ''
+        additionalDetails: safeAdditionalDetails(getParsedOrExisting(['additionalDetails', 'additional_details', 'otherDetails', 'additionalInfo'], formData.additionalDetails))
       };
 
       setFormData(parsedForm);
@@ -1307,25 +1323,19 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
           <div className="grid grid-cols-3 gap-6 mb-6">
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hacker Rank Score
+                Hacker Rank Score (%)
               </label>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={formData.hackerRankScore}
-                  onChange={(e) => handleChange('hackerRankScore', e.target.value)}
+                  onChange={(e) => handleChange('hackerRankScore', e.target.value.replace('%', ''))}
                   className="flex-1 border border-gray-300 rounded px-3 py-2"
-                  placeholder="Score"
+                  placeholder="e.g., 85"
                 />
-                <span className="text-gray-600">/</span>
-                <input
-                  type="text"
-                  value={formData.hackerRankTotal}
-                  onChange={(e) => handleChange('hackerRankTotal', e.target.value)}
-                  className="flex-1 border border-gray-300 rounded px-3 py-2"
-                  placeholder="Total"
-                />
+                <span className="text-gray-600 font-semibold">%</span>
               </div>
+              <p className="text-xs text-gray-500 mt-1">Enter score as a number (0-100)</p>
             </div>
           </div>
 
