@@ -287,16 +287,7 @@ const CVTemplateApp = () => {
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setResumeFile(file);
-
-    const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
-
-    if (!apiKey) {
-      alert('API key not found. Please add REACT_APP_OPENAI_API_KEY to your .env file.');
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -357,7 +348,6 @@ const CVTemplateApp = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          apiKey: apiKey,
           messages: [{
             role: 'user',
             content: [

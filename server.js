@@ -30,8 +30,8 @@ app.post('/api/parse-resume', async (req, res) => {
   console.log('📥 Received parse request');
 
   try {
-    const { apiKey, messages } = req.body;
-
+    const { messages } = req.body;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       console.error('❌ No API key provided');
       return res.status(400).json({ error: 'API key is required' });
