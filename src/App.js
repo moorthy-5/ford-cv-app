@@ -662,9 +662,7 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
         overallExperience: data.overallExperience || '',
         coreSkillExperience: data.coreSkillExperience || '',
         qualifications: data.qualifications || '',
-        hackerRankScore: data.hackerRankScore || '',
-        hackerRankTotal: data.hackerRankTotal || '',
-        hackerRankFull: `${data.hackerRankScore || ''} / ${data.hackerRankTotal || ''}`,
+        hackerRankScore: data.hackerRankScore ? data.hackerRankScore.toString().replace('%', ''): '',
         skill1: data.skill1 || '',
         skill2: data.skill2 || '',
         skill3: data.skill3 || '',
@@ -1497,7 +1495,40 @@ DOMAIN EXPERTISE
           />
 
           <button
-            onClick={() => setStep(4)}
+onClick={() => {
+  const missingFields = [];
+
+  if (!formData.firstName?.trim()) missingFields.push("First Name");
+  if (!formData.lastName?.trim()) missingFields.push("Last Name");
+
+  if (missingFields.length > 0) {
+    const toast = document.createElement("div");
+    toast.style.position = "fixed";
+    toast.style.top = "20px";
+    toast.style.left = "50%";
+    toast.style.transform = "translateX(-50%)";
+    toast.style.background = "#ff4d4d";
+    toast.style.color = "white";
+    toast.style.padding = "14px 24px";
+    toast.style.borderRadius = "14px";
+    toast.style.boxShadow = "0 4px 14px rgba(0,0,0,0.25)";
+    toast.style.fontSize = "16px";
+    toast.style.fontWeight = "600";
+    toast.style.zIndex = "9999";
+    toast.style.opacity = "1";
+    toast.style.transition = "opacity 0.5s ease";
+    toast.innerHTML = `⚠ Please fill the required fields:<br>• ${missingFields.join("<br>• ")}`;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = "0";
+    }, 2000);
+    setTimeout(() => {
+      toast.remove();
+    }, 2600);
+    return;
+  }
+  setStep(4);
+}}
             className="w-full bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-800 transition"
           >
             Generate Preview
@@ -1694,7 +1725,7 @@ DOMAIN EXPERTISE
                     </div>
 
                     <div className="mt-4">
-                      <p className="field-label">Hacker rank Score:<span className="field-label">{formData.hackerRankScore} / {formData.hackerRankTotal}</span></p>
+                      <p className="field-label">Hacker rank Score:<span className="field-label">{formData.hackerRankScore} %</span></p>
                     </div>
 
                     <div className="mt-4">
