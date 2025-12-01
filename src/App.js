@@ -288,6 +288,13 @@ const CVTemplateApp = () => {
     setResumeFile(file);
     setLoading(true);
 
+  if (file.name.toLowerCase().endsWith(".doc")) {
+  showToast("⚠ .doc files are not supported.\nPlease upload a .docx or PDF file.");
+  setResumeFile(null);
+  e.target.value = "";
+  setLoading(false);
+  return;
+}
     try {
       let resumeText = '';
 
@@ -1002,7 +1009,7 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
               )}
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Supports PDF, Word (.doc, .docx), and text files
+              Supports PDF, Word (.docx), and text files
             </p>
           </div>
 
@@ -1497,41 +1504,17 @@ DOMAIN EXPERTISE
           <button
 onClick={() => {
   const missingFields = [];
+
   if (!formData.firstName?.trim()) missingFields.push("First Name");
-  if (!formData.lastName?.trim()) missingFields.push("Last Name");
+  if (!formData.lastName?.trim())  missingFields.push("Last Name");
+
   if (missingFields.length > 0) {
-    const toast = document.createElement("div");
-    toast.style.position = "fixed";
-    toast.style.top = "20px";
-    toast.style.left = "50%";
-    toast.style.transform = "translateX(-50%)";
-    toast.style.background = "linear-gradient(135deg, #003399, #0055cc)";
-    toast.style.color = "white";
-    toast.style.padding = "16px 28px";
-    toast.style.borderRadius = "16px";
-    toast.style.boxShadow = "0 8px 22px rgba(0, 85, 204, 0.35)";
-    toast.style.fontSize = "16px";
-    toast.style.fontWeight = "600";
-    toast.style.zIndex = "99999";
-    toast.style.opacity = "0";
-    toast.style.backdropFilter = "blur(4px)";
-    toast.style.transition = "opacity 0.6s ease, transform 0.5s ease";
-    toast.style.transform = "translate(-50%, -20px)";
-    toast.innerHTML = `⚠ Please fill the required fields:<br>• ${missingFields.join("<br>• ")}`;
-    document.body.appendChild(toast);
-    setTimeout(() => {
-      toast.style.opacity = "1";
-      toast.style.transform = "translate(-50%, 0)";
-    }, 50);
-    setTimeout(() => {
-      toast.style.opacity = "0";
-      toast.style.transform = "translate(-50%, -15px)";
-    }, 2300);
-    setTimeout(() => {
-      toast.remove();
-    }, 2900);
+    showToast(
+      `⚠ Please fill the required fields:\n• ${missingFields.join("\n• ")}`
+    );
     return;
   }
+
   setStep(4);
 }}
             className="w-full bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-800 transition"
@@ -1817,5 +1800,47 @@ onClick={() => {
 
   return null;
 };
+
+
+export function showToast(message, duration = 2500) {
+  const toast = document.createElement("div");
+
+  toast.style.position = "fixed";
+  toast.style.top = "20px";
+  toast.style.left = "50%";
+  toast.style.transform = "translateX(-50%)";
+  toast.style.background = "linear-gradient(135deg, #003399, #0055cc)";
+  toast.style.color = "white";
+  toast.style.padding = "16px 28px";
+  toast.style.borderRadius = "16px";
+  toast.style.boxShadow = "0 8px 22px rgba(0, 85, 204, 0.35)";
+  toast.style.fontSize = "16px";
+  toast.style.fontWeight = "600";
+  toast.style.zIndex = "99999";
+  toast.style.opacity = "0";
+  toast.style.backdropFilter = "blur(4px)";
+  toast.style.transition = "opacity 0.6s ease, transform 0.5s ease";
+  toast.style.maxWidth = "90%";
+  toast.style.textAlign = "center";
+  toast.style.whiteSpace = "pre-line";
+
+  toast.innerHTML = message;
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translate(-50%, 0)";
+  }, 50);
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translate(-50%, -20px)";
+  }, duration);
+
+  setTimeout(() => {
+    toast.remove();
+  }, duration + 500);
+}
 
 export default CVTemplateApp;
