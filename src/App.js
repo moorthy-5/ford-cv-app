@@ -478,19 +478,31 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
         return (v !== undefined && v !== null && String(v).trim() !== '') ? v : existingVal;
       };
 
-      // Helper to safely convert additionalDetails to string
       const safeAdditionalDetails = (value) => {
-        if (!value) return '';
-        if (typeof value === 'string') return value.trim();
-        if (typeof value === 'object') {
-          try {
-            return JSON.stringify(value, null, 2);
-          } catch (e) {
-            return '';
+  if (!value) return '';
+
+  if (typeof value === 'string') return value.trim();
+
+  if (typeof value === 'object') {
+    const formatObject = (obj, indent = '') => {
+      let result = '';
+      for (const key in obj) {
+        if (Object.hasOwn(obj, key)) {
+          const val = obj[key];
+          if (typeof val === 'object' && val !== null) {
+            result += `${indent}${key}:\n${formatObject(val, indent + '  ')}\n`;
+          } else {
+            result += `${indent}${key}: ${val}\n`;
           }
         }
-        return String(value);
-      };
+      }
+      return result.trim();
+    };
+    return formatObject(value);
+  }
+
+  return String(value);
+};
 
       const parsedForm = {
         ...formData,
