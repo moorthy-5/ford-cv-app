@@ -916,7 +916,7 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-blue-900">Upload Resume & Details</h1>
+            <h1 className="text-3xl font-bold text-blue-900">MSXI Formatter</h1>
             <div className="flex gap-2">
               <button
                 onClick={() => setStep(5)}
@@ -936,19 +936,9 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
               </button>
             </div>
           </div>
-
-          <div className="mb-6 bg-green-50 border-2 border-green-200 rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 bg-green-500 rounded-full"></div>
-              <p className="text-sm text-green-800 font-medium">
-                OpenAI API Key configured from environment variables
-              </p>
-            </div>
-          </div>
-
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Word Template (Optional - Recommended) *
+              Upload Msxi Template *
             </label>
             <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center bg-blue-50">
               <Upload className="mx-auto h-10 w-10 text-blue-400 mb-2" />
@@ -970,9 +960,6 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
                   ✓ Uploaded: {templateFile.name}
                 </p>
               )}
-              <p className="mt-2 text-xs text-gray-500">
-                Upload your CV template with placeholders like {'{'}firstName{'}'}, {'{'}lastName{'}'}, etc.
-              </p>
             </div>
             {!templateFile && (
               <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded">
@@ -985,7 +972,7 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
 
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Resume (PDF, Word, or Text) *
+              Upload Resume (PDF or Docx) *
             </label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
               <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
@@ -1009,7 +996,7 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
               )}
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Supports PDF, Word (.docx), and text files
+              Supports PDF and Word (.docx)files
             </p>
           </div>
 
@@ -1507,7 +1494,9 @@ onClick={() => {
 
   if (!formData.firstName?.trim()) missingFields.push("First Name");
   if (!formData.lastName?.trim())  missingFields.push("Last Name");
-
+  if (!formData.interviewDate?.trim())  missingFields.push("Interview Availability Date");
+  if (!formData.startDate?.trim())  missingFields.push("Start Availability Date");
+  if (!formData.noticePeriod?.trim())  missingFields.push("Notice Period");
   if (missingFields.length > 0) {
     showToast(
       `⚠ Please fill the required fields:\n• ${missingFields.join("\n• ")}`
@@ -1598,7 +1587,7 @@ onClick={() => {
                 title={templateFile ? "Download using uploaded template" : "Download with basic formatting"}
               >
                 <FileText className="mr-2 h-4 w-4" />
-                {templateFile ? "Download (Template)" : "Download as Word"}
+                {templateFile ? "Download as Word" : "Download as Word"}
               </button>
               <button
                 onClick={saveProfileToHistory}
