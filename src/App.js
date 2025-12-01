@@ -34,7 +34,6 @@ const CVTemplateApp = () => {
     coreSkillExperience: '',
     qualifications: '',
     hackerRankScore: '',
-    hackerRankTotal: '',
     skill1: '',
     skill2: '',
     skill3: '',
@@ -167,7 +166,6 @@ const CVTemplateApp = () => {
       coreSkillExperience: '',
       qualifications: '',
       hackerRankScore: '',
-      hackerRankTotal: '',
       skill1: '',
       skill2: '',
       skill3: '',
@@ -287,18 +285,16 @@ const CVTemplateApp = () => {
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setResumeFile(file);
-
-    const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
-
-    if (!apiKey) {
-      alert('API key not found. Please add REACT_APP_OPENAI_API_KEY to your .env file.');
-      return;
-    }
-
     setLoading(true);
 
+  if (file.name.toLowerCase().endsWith(".doc")) {
+  showToast("⚠ .doc files are not supported.\nPlease upload a .docx or PDF file.");
+  setResumeFile(null);
+  e.target.value = "";
+  setLoading(false);
+  return;
+}
     try {
       let resumeText = '';
 
@@ -357,7 +353,6 @@ const CVTemplateApp = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          apiKey: apiKey,
           messages: [{
             role: 'user',
             content: [
@@ -374,6 +369,7 @@ const CVTemplateApp = () => {
   "overallExperience": "total years of experience (e.g., '7.4 years')",
   "coreSkillExperience": "years in primary technology",
   "qualifications": "certifications or qualifications",
+  "hackerRankScore": "hacker rank score as percentage only (e.g., '85' without % symbol)",
   "skill1": "top skill 1",
   "skill2": "top skill 2",
   "skill3": "top skill 3",
@@ -476,9 +472,24 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
       setParsedObject(parsed);
       setParsedResponseRaw(JSON.stringify(data, null, 2));
 
-      const getParsedOrExisting = (candidates, existingVal) => {
+
+        const getParsedOrExisting = (candidates, existingVal) => {
         const v = pickFirst(parsed, candidates);
         return (v !== undefined && v !== null && String(v).trim() !== '') ? v : existingVal;
+      };
+
+      // Helper to safely convert additionalDetails to string
+      const safeAdditionalDetails = (value) => {
+        if (!value) return '';
+        if (typeof value === 'string') return value.trim();
+        if (typeof value === 'object') {
+          try {
+            return JSON.stringify(value, null, 2);
+          } catch (e) {
+            return '';
+          }
+        }
+        return String(value);
       };
 
       const parsedForm = {
@@ -496,7 +507,7 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
         masterDuration: getParsedOrExisting(['masterDuration', 'master_duration'], formData.masterDuration),
         masterDetails: getParsedOrExisting(['masterDetails', 'master_details'], formData.masterDetails),
         employmentHistory: (parsed.employmentHistory && parsed.employmentHistory.length > 0) ? parsed.employmentHistory : (parsed.employment_history && parsed.employment_history.length > 0) ? parsed.employment_history : (parsed.employment && parsed.employment.length > 0) ? parsed.employment : formData.employmentHistory,
-        additionalDetails: getParsedOrExisting(['additionalDetails', 'additional_details', 'otherDetails', 'additionalInfo'], formData.additionalDetails) || ''
+        additionalDetails: safeAdditionalDetails(getParsedOrExisting(['additionalDetails', 'additional_details', 'otherDetails', 'additionalInfo'], formData.additionalDetails))
       };
 
       setFormData(parsedForm);
@@ -658,9 +669,7 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
         overallExperience: data.overallExperience || '',
         coreSkillExperience: data.coreSkillExperience || '',
         qualifications: data.qualifications || '',
-        hackerRankScore: data.hackerRankScore || '',
-        hackerRankTotal: data.hackerRankTotal || '',
-        hackerRankFull: `${data.hackerRankScore || ''} / ${data.hackerRankTotal || ''}`,
+        hackerRankScore: data.hackerRankScore ? data.hackerRankScore.toString().replace('%', ''): '',
         skill1: data.skill1 || '',
         skill2: data.skill2 || '',
         skill3: data.skill3 || '',
@@ -907,7 +916,7 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-blue-900">Upload Resume & Details</h1>
+            <h1 className="text-3xl font-bold text-blue-900">MSXI Formatter</h1>
             <div className="flex gap-2">
               <button
                 onClick={() => setStep(5)}
@@ -927,19 +936,9 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
               </button>
             </div>
           </div>
-
-          <div className="mb-6 bg-green-50 border-2 border-green-200 rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 bg-green-500 rounded-full"></div>
-              <p className="text-sm text-green-800 font-medium">
-                OpenAI API Key configured from environment variables
-              </p>
-            </div>
-          </div>
-
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Word Template (Optional - Recommended) *
+              Upload Msxi Template *
             </label>
             <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center bg-blue-50">
               <Upload className="mx-auto h-10 w-10 text-blue-400 mb-2" />
@@ -961,9 +960,6 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
                   ✓ Uploaded: {templateFile.name}
                 </p>
               )}
-              <p className="mt-2 text-xs text-gray-500">
-                Upload your CV template with placeholders like {'{'}firstName{'}'}, {'{'}lastName{'}'}, etc.
-              </p>
             </div>
             {!templateFile && (
               <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded">
@@ -976,7 +972,7 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
 
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Resume (PDF, Word, or Text) *
+              Upload Resume (PDF or Docx) *
             </label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
               <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
@@ -1000,7 +996,7 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
               )}
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Supports PDF, Word (.doc, .docx), and text files
+              Supports PDF and Word (.docx)files
             </p>
           </div>
 
@@ -1319,25 +1315,19 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
           <div className="grid grid-cols-3 gap-6 mb-6">
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hacker Rank Score
+                Hacker Rank Score (%)
               </label>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={formData.hackerRankScore}
-                  onChange={(e) => handleChange('hackerRankScore', e.target.value)}
+                  onChange={(e) => handleChange('hackerRankScore', e.target.value.replace('%', ''))}
                   className="flex-1 border border-gray-300 rounded px-3 py-2"
-                  placeholder="Score"
+                  placeholder="e.g., 85"
                 />
-                <span className="text-gray-600">/</span>
-                <input
-                  type="text"
-                  value={formData.hackerRankTotal}
-                  onChange={(e) => handleChange('hackerRankTotal', e.target.value)}
-                  className="flex-1 border border-gray-300 rounded px-3 py-2"
-                  placeholder="Total"
-                />
+                <span className="text-gray-600 font-semibold">%</span>
               </div>
+              <p className="text-xs text-gray-500 mt-1">Enter score as a number (0-100)</p>
             </div>
           </div>
 
@@ -1499,7 +1489,23 @@ DOMAIN EXPERTISE
           />
 
           <button
-            onClick={() => setStep(4)}
+onClick={() => {
+  const missingFields = [];
+
+  if (!formData.firstName?.trim()) missingFields.push("First Name");
+  if (!formData.lastName?.trim())  missingFields.push("Last Name");
+  if (!formData.interviewDate?.trim())  missingFields.push("Interview Availability Date");
+  if (!formData.startDate?.trim())  missingFields.push("Start Availability Date");
+  if (!formData.noticePeriod?.trim())  missingFields.push("Notice Period");
+  if (missingFields.length > 0) {
+    showToast(
+      `⚠ Please fill the required fields:\n• ${missingFields.join("\n• ")}`
+    );
+    return;
+  }
+
+  setStep(4);
+}}
             className="w-full bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-800 transition"
           >
             Generate Preview
@@ -1581,7 +1587,7 @@ DOMAIN EXPERTISE
                 title={templateFile ? "Download using uploaded template" : "Download with basic formatting"}
               >
                 <FileText className="mr-2 h-4 w-4" />
-                {templateFile ? "Download (Template)" : "Download as Word"}
+                {templateFile ? "Download as Word" : "Download as Word"}
               </button>
               <button
                 onClick={saveProfileToHistory}
@@ -1696,7 +1702,7 @@ DOMAIN EXPERTISE
                     </div>
 
                     <div className="mt-4">
-                      <p className="field-label">Hacker rank Score:<span className="field-label">{formData.hackerRankScore} / {formData.hackerRankTotal}</span></p>
+                      <p className="field-label">Hacker rank Score:<span className="field-label">{formData.hackerRankScore} %</span></p>
                     </div>
 
                     <div className="mt-4">
@@ -1783,5 +1789,47 @@ DOMAIN EXPERTISE
 
   return null;
 };
+
+
+export function showToast(message, duration = 2500) {
+  const toast = document.createElement("div");
+
+  toast.style.position = "fixed";
+  toast.style.top = "20px";
+  toast.style.left = "50%";
+  toast.style.transform = "translateX(-50%)";
+  toast.style.background = "linear-gradient(135deg, #003399, #0055cc)";
+  toast.style.color = "white";
+  toast.style.padding = "16px 28px";
+  toast.style.borderRadius = "16px";
+  toast.style.boxShadow = "0 8px 22px rgba(0, 85, 204, 0.35)";
+  toast.style.fontSize = "16px";
+  toast.style.fontWeight = "600";
+  toast.style.zIndex = "99999";
+  toast.style.opacity = "0";
+  toast.style.backdropFilter = "blur(4px)";
+  toast.style.transition = "opacity 0.6s ease, transform 0.5s ease";
+  toast.style.maxWidth = "90%";
+  toast.style.textAlign = "center";
+  toast.style.whiteSpace = "pre-line";
+
+  toast.innerHTML = message;
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translate(-50%, 0)";
+  }, 50);
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translate(-50%, -20px)";
+  }, duration);
+
+  setTimeout(() => {
+    toast.remove();
+  }, duration + 500);
+}
 
 export default CVTemplateApp;
