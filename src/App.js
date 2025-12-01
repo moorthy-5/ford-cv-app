@@ -923,192 +923,195 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
     );
   }
 
-  if (step === 1) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-blue-900">MSXI Formatter</h1>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setStep(5)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
-              >
-                <History className="w-4 h-4" />
-                View History
-              </button>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                Logout
-              </button>
-            </div>
+if (step === 1) {
+  return (
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
+        {/* Professional Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-4xl font-bold text-blue-900 mb-4">MSXI Formatter</h1>
+          <div className="border-b-2 border-gray-200 mb-4"></div>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => setStep(5)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium shadow-sm"
+            >
+              <History className="w-4 h-4" />
+              View History
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium shadow-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Logout
+            </button>
           </div>
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Msxi Template *
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Upload Msxi Template *
+          </label>
+          <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center bg-blue-50">
+            <Upload className="mx-auto h-10 w-10 text-blue-400 mb-2" />
+            <input
+              type="file"
+              accept=".docx"
+              onChange={handleTemplateUpload}
+              className="hidden"
+              id="template-upload"
+            />
+            <label
+              htmlFor="template-upload"
+              className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium"
+            >
+              Click to upload Word template (.docx)
             </label>
-            <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center bg-blue-50">
-              <Upload className="mx-auto h-10 w-10 text-blue-400 mb-2" />
-              <input
-                type="file"
-                accept=".docx"
-                onChange={handleTemplateUpload}
-                className="hidden"
-                id="template-upload"
-              />
-              <label
-                htmlFor="template-upload"
-                className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium"
-              >
-                Click to upload Word template (.docx)
-              </label>
-              {templateFile && (
-                <p className="mt-2 text-sm text-green-600">
-                  ✓ Uploaded: {templateFile.name}
-                </p>
-              )}
-            </div>
-            {!templateFile && (
-              <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                <p className="text-xs text-yellow-800">
-                  💡 <strong>Tip:</strong> Uploading a template is highly recommended! It will use your exact formatting, logos, and styling.
-                </p>
-              </div>
+            {templateFile && (
+              <p className="mt-2 text-sm text-green-600">
+                ✓ Uploaded: {templateFile.name}
+              </p>
             )}
           </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Resume (PDF or Docx) *
-            </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx,.txt"
-                onChange={handleFileUpload}
-                className="hidden"
-                id="resume-upload"
-              />
-              <label
-                htmlFor="resume-upload"
-                className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium"
-              >
-                Click to upload resume
-              </label>
-              {resumeFile && (
-                <p className="mt-2 text-sm text-gray-600">
-                  ✓ Uploaded: {resumeFile.name}
-                </p>
-              )}
-            </div>
-            <p className="mt-2 text-xs text-gray-500">
-              Supports PDF and Word (.docx)files
-            </p>
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Photo *
-            </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                className="hidden"
-                id="photo-upload"
-              />
-              <label
-                htmlFor="photo-upload"
-                className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium"
-              >
-                Click to upload photo
-              </label>
-              {photoPreview && (
-                <div className="mt-4">
-                  <img src={photoPreview} alt="Preview" className="mx-auto h-32 w-32 object-cover rounded" />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {resumeParsed && (
-            <div className="mb-6 border rounded-lg p-4 bg-white">
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">Parsed Resume Summary</h3>
-              <div className="grid grid-cols-2 gap-4 mb-3">
-                <div>
-                  <p className="text-sm text-gray-700">First Name</p>
-                  <p className="font-medium">{formData.firstName || (parsedObject && parsedObject.firstName) || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-700">Last Name</p>
-                  <p className="font-medium">{formData.lastName || (parsedObject && parsedObject.lastName) || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-700">Overall Experience</p>
-                  <p className="font-medium">{formData.overallExperience || (parsedObject && parsedObject.overallExperience) || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-700">Core Skill Experience</p>
-                  <p className="font-medium">{formData.coreSkillExperience || (parsedObject && parsedObject.coreSkillExperience) || '—'}</p>
-                </div>
-              </div>
-
-              <h4 className="font-semibold mb-2">Ready checklist</h4>
-              <ul className="list-inside list-none space-y-1 text-sm">
-                <li>
-                  {resumeParsed ? (
-                    <span className="text-green-700">✓ Resume parsed</span>
-                  ) : (
-                    <span className="text-red-600">✕ Resume not parsed</span>
-                  )}
-                </li>
-                <li>
-                  {photoPreview ? (
-                    <span className="text-green-700">✓ Photo uploaded</span>
-                  ) : (
-                    <span className="text-red-600">✕ Photo missing</span>
-                  )}
-                </li>
-              </ul>
-            </div>
-          )}
-
-          {loading && (
-            <div className="flex items-center justify-center py-4 bg-blue-50 rounded-lg mb-4">
-              <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
-              <span className="ml-2 text-blue-900 font-medium">Parsing resume with AI...</span>
-            </div>
-          )}
-
-          <button
-            onClick={() => openForm()}
-            disabled={!resumeFile || !photoFile || loading}
-            className="w-full bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
-          >
-            Proceed to Form
-          </button>
-
-          {templateFile && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800 text-center">
-                ✓ Template loaded: <strong>{templateFile.name}</strong>
-                <br />
-                <span className="text-xs">Your final document will use this template's formatting</span>
+          {!templateFile && (
+            <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded">
+              <p className="text-xs text-yellow-800">
+                💡 <strong>Tip:</strong> Uploading a template is highly recommended! It will use your exact formatting, logos, and styling.
               </p>
             </div>
           )}
         </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Upload Resume (PDF or Docx) *
+          </label>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+            <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.txt"
+              onChange={handleFileUpload}
+              className="hidden"
+              id="resume-upload"
+            />
+            <label
+              htmlFor="resume-upload"
+              className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium"
+            >
+              Click to upload resume
+            </label>
+            {resumeFile && (
+              <p className="mt-2 text-sm text-gray-600">
+                ✓ Uploaded: {resumeFile.name}
+              </p>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-gray-500">
+            Supports PDF and Word (.docx)files
+          </p>
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Upload Photo *
+          </label>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+            <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoUpload}
+              className="hidden"
+              id="photo-upload"
+            />
+            <label
+              htmlFor="photo-upload"
+              className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium"
+            >
+              Click to upload photo
+            </label>
+            {photoPreview && (
+              <div className="mt-4">
+                <img src={photoPreview} alt="Preview" className="mx-auto h-32 w-32 object-cover rounded" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {resumeParsed && (
+          <div className="mb-6 border rounded-lg p-4 bg-white">
+            <h3 className="text-lg font-semibold text-blue-900 mb-2">Parsed Resume Summary</h3>
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              <div>
+                <p className="text-sm text-gray-700">First Name</p>
+                <p className="font-medium">{formData.firstName || (parsedObject && parsedObject.firstName) || '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-700">Last Name</p>
+                <p className="font-medium">{formData.lastName || (parsedObject && parsedObject.lastName) || '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-700">Overall Experience</p>
+                <p className="font-medium">{formData.overallExperience || (parsedObject && parsedObject.overallExperience) || '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-700">Core Skill Experience</p>
+                <p className="font-medium">{formData.coreSkillExperience || (parsedObject && parsedObject.coreSkillExperience) || '—'}</p>
+              </div>
+            </div>
+
+            <h4 className="font-semibold mb-2">Ready checklist</h4>
+            <ul className="list-inside list-none space-y-1 text-sm">
+              <li>
+                {resumeParsed ? (
+                  <span className="text-green-700">✓ Resume parsed</span>
+                ) : (
+                  <span className="text-red-600">✕ Resume not parsed</span>
+                )}
+              </li>
+              <li>
+                {photoPreview ? (
+                  <span className="text-green-700">✓ Photo uploaded</span>
+                ) : (
+                  <span className="text-red-600">✕ Photo missing</span>
+                )}
+              </li>
+            </ul>
+          </div>
+        )}
+
+        {loading && (
+          <div className="flex items-center justify-center py-4 bg-blue-50 rounded-lg mb-4">
+            <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+            <span className="ml-2 text-blue-900 font-medium">Parsing resume with AI...</span>
+          </div>
+        )}
+
+        <button
+          onClick={() => openForm()}
+          disabled={!resumeFile || !photoFile || loading}
+          className="w-full bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+        >
+          Proceed to Form
+        </button>
+
+        {templateFile && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800 text-center">
+              ✓ Template loaded: <strong>{templateFile.name}</strong>
+              <br />
+              <span className="text-xs">Your final document will use this template's formatting</span>
+            </p>
+          </div>
+        )}
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   if (step === 3) {
     return (
