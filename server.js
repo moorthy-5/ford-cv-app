@@ -116,11 +116,14 @@ app.post('/api/parse-resume', async (req, res) => {
 
 // Serve React build instead of public
 app.use(express.static(path.join(__dirname, 'build')));
-
-// Catch-all for React router
-app.get('/{*splat}', (req, res) => {
+app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
+
+// // Catch-all for React router
+// app.get('/{*splat}', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'build', 'index.html'));
+// });
 
 // // ----------------------------
 // // Serve React frontend from public folder
