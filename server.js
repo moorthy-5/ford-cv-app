@@ -6,7 +6,7 @@ const path = require('path');
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-
+require('dotenv').config();
 // Helper function to clean and truncate text
 function cleanAndTruncateText(text, maxTokens = 8000) {
   let cleaned = text

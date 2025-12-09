@@ -12,7 +12,6 @@ const CVTemplateApp = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [resumeFile, setResumeFile] = useState(null);
-  const [templateFile, setTemplateFile] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [formData, setFormData] = useState({
@@ -100,7 +99,7 @@ const CVTemplateApp = () => {
     localStorage.setItem(historyKey, JSON.stringify(history));
     setProfileHistory(history);
 
-    alert('✅ Profile saved to history!');
+    showToast('✅ Profile saved to history!');
   };
 
   // Delete profile from history
@@ -144,7 +143,6 @@ const CVTemplateApp = () => {
     setStep(1);
     setLoading(false);
     setResumeFile(null);
-    setTemplateFile(null);
     setPhotoFile(null);
     setPhotoPreview(null);
     setFormData({
@@ -209,27 +207,71 @@ const CVTemplateApp = () => {
     setStep(3);
   };
 
-  const handlePhotoUpload = (e) => {
+  // Handle photo upload (supports PDF and images)
+  const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setPhotoFile(file);
+    if (!file) return;
+
+    setPhotoFile(file);
+
+    // Check if file is PDF
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      try {
+        console.log('📄 PDF photo detected, extracting first page...');
+
+        // Load PDF.js if not already loaded
+        if (!window.pdfjsLib) {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+          document.head.appendChild(script);
+
+          await new Promise((resolve) => {
+            script.onload = resolve;
+          });
+
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        // Read PDF and extract first page as image
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const page = await pdf.getPage(1); // Get first page
+
+        // Create canvas to render PDF page
+        const viewport = page.getViewport({ scale: 2.5 }); // Higher scale for better quality
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        // Render PDF page to canvas
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        }).promise;
+
+        // Convert canvas to data URL (PNG format for best quality)
+        const imageDataURL = canvas.toDataURL('image/png', 1.0);
+        setPhotoPreview(imageDataURL);
+
+        console.log('✅ PDF photo extracted successfully');
+        showToast('✅ Photo extracted from PDF successfully!');
+      } catch (error) {
+        console.error('❌ Error extracting photo from PDF:', error);
+        showToast('❌ Error extracting photo from PDF. Please ensure the PDF contains an image and try again, or upload a JPG/PNG instead.');
+      }
+    } else if (file.type.startsWith('image/') ||
+               file.name.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+      // Handle regular image files (JPG, PNG, GIF, WEBP, etc.)
       const reader = new FileReader();
       reader.onload = (e) => {
         setPhotoPreview(e.target.result);
+        console.log('✅ Image photo uploaded successfully');
       };
       reader.readAsDataURL(file);
-    }
-  };
-
-  const handleTemplateUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (!file.name.toLowerCase().endsWith('.docx')) {
-        alert('⚠️ Please upload a .docx file (Word 2007 or later format)');
-        return;
-      }
-      setTemplateFile(file);
-      alert(`✅ Template uploaded: ${file.name}`);
+    } else {
+      showToast('⚠️ Please upload a valid image file (JPG, PNG, GIF, WEBP) or PDF containing a photo.');
     }
   };
 
@@ -288,13 +330,14 @@ const CVTemplateApp = () => {
     setResumeFile(file);
     setLoading(true);
 
-  if (file.name.toLowerCase().endsWith(".doc")) {
-  showToast("⚠ .doc files are not supported.\nPlease upload a .docx or PDF file.");
-  setResumeFile(null);
-  e.target.value = "";
-  setLoading(false);
-  return;
-}
+    if (file.name.toLowerCase().endsWith(".doc")) {
+      showToast("⚠ .doc files are not supported.\nPlease upload a .docx or PDF file.");
+      setResumeFile(null);
+      e.target.value = "";
+      setLoading(false);
+      return;
+    }
+
     try {
       let resumeText = '';
 
@@ -360,15 +403,22 @@ const CVTemplateApp = () => {
                 type: 'text',
                 text: resumeText
               },
-              {
-                type: 'text',
-                text: `Extract the following information from this resume and return ONLY a JSON object with no markdown formatting or backticks:
+{
+  type: 'text',
+  text: `Extract the following information from this resume and return ONLY a JSON object with no markdown formatting or backticks:
+
+IMPORTANT INSTRUCTIONS:
+1. IGNORE all images, logos, icons, photos, and graphical elements in the document
+2. Extract ONLY text-based information
+3. Do NOT describe or mention any visual elements, certification logos, or images
+4. Return ONLY valid JSON with no additional text
+
 {
   "firstName": "candidate's first name",
   "lastName": "candidate's last name",
   "overallExperience": "total years of experience (e.g., '7.4 years')",
   "coreSkillExperience": "years in primary technology",
-  "qualifications": "certifications or qualifications",
+  "qualifications": "certifications or qualifications (text only, ignore logos)",
   "hackerRankScore": "hacker rank score as percentage only (e.g., '85' without % symbol)",
   "skill1": "top skill 1",
   "skill2": "top skill 2",
@@ -386,7 +436,12 @@ const CVTemplateApp = () => {
       "role": "detailed role description and achievements"
     }
   ],
-  "additionalDetails": "Extract ALL remaining professional information from the resume in a well-formatted, structured text format. Include these sections if present:
+  "additionalDetails": "Extract ALL remaining professional information from the resume in a well-formatted, structured text format.
+
+IMPORTANT:
+- IGNORE all images, certification logos, badges, and visual elements
+- Extract ONLY text content
+- Include these sections if present (text only):
 
 PROFESSIONAL SUMMARY
 (Complete professional summary/objective from resume)
@@ -394,14 +449,14 @@ PROFESSIONAL SUMMARY
 TECHNICAL SKILLS
 (All technical skills organized by categories like: Cloud Platforms, Programming Languages, Databases, Tools, Frameworks, etc.)
 
+CERTIFICATIONS & TRAINING
+(List certification NAMES only - ignore logos and badges. Example: 'IBM Certified Solutions Architect', 'Oracle WebLogic Administrator')
+
 PROFESSIONAL EXPERIENCE (DETAILED)
 (For each job, include: Company, Duration, Project name, Tech Stack, Key Responsibilities in detail, Achievements)
 
 KEY ACHIEVEMENTS
 (All notable achievements, awards, recognitions)
-
-CERTIFICATIONS & TRAINING
-(All certifications, courses, training programs)
 
 DOMAIN EXPERTISE
 (Areas of domain knowledge and expertise)
@@ -416,12 +471,17 @@ PROFESSIONAL MEMBERSHIPS
 (Associations, communities, memberships)
 
 Include ALL professional information that adds value to the candidate profile.
-EXCLUDE: Phone numbers, email addresses, physical addresses, date of birth, religion, marital status, nationality, languages spoken (unless professionally relevant), gender, photographs, passport details, Aadhar/PAN numbers.
+EXCLUDE: Phone numbers, email addresses, physical addresses, date of birth, religion, marital status, nationality, languages spoken (unless professionally relevant), gender, photographs, passport details, Aadhar/PAN numbers, images, logos, badges, visual elements.
 Format this as clear, readable text with proper section headings and line breaks."
 }
 
-IMPORTANT: Return ONLY the JSON object, no other text.`
-              }
+CRITICAL RULES:
+1. Return ONLY the JSON object
+2. NO markdown formatting or backticks
+3. NO image descriptions or visual element mentions
+4. Ensure all JSON strings are properly escaped
+5. Do NOT include any text outside the JSON object`
+}
             ]
           }]
         })
@@ -459,50 +519,74 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
       }
 
       const cleanedText = textContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      let parsed = {};
-      try {
-        parsed = JSON.parse(cleanedText);
-      } catch (e) {
-        console.error('Failed to parse JSON from AI response:', e, cleanedText);
-        throw new Error('Failed to parse resume data from the parser.');
-      }
-      console.log('✅ Parsed data:', parsed);
+let parsed = {};
+try {
+  parsed = JSON.parse(cleanedText);
+  console.log('✅ Parsed data:', parsed);
+} catch (e) {
+  console.error('Failed to parse JSON from AI response:', e, cleanedText);
+
+  // Try to fix common JSON issues
+  let fixedText = cleanedText;
+
+  // Remove any text before the first {
+  const firstBrace = fixedText.indexOf('{');
+  if (firstBrace > 0) {
+    fixedText = fixedText.substring(firstBrace);
+  }
+
+  // Remove any text after the last }
+  const lastBrace = fixedText.lastIndexOf('}');
+  if (lastBrace > 0 && lastBrace < fixedText.length - 1) {
+    fixedText = fixedText.substring(0, lastBrace + 1);
+  }
+
+  // Try to parse again
+  try {
+    parsed = JSON.parse(fixedText);
+    console.log('✅ Successfully parsed after cleanup');
+  } catch (e2) {
+    console.error('Failed to parse even after cleanup:', e2);
+    showToast('⚠️ Resume parsing failed due to formatting issues. Please fill the form manually.\n\nThe resume may contain images or special characters that caused parsing errors.');
+    throw new Error('Failed to parse resume data. The document may contain images or formatting that interfered with text extraction.');
+  }
+}
+console.log('✅ Parsed data:', parsed);
 
       setParsedJsonText(cleanedText);
       setParsedObject(parsed);
       setParsedResponseRaw(JSON.stringify(data, null, 2));
 
-
-        const getParsedOrExisting = (candidates, existingVal) => {
+      const getParsedOrExisting = (candidates, existingVal) => {
         const v = pickFirst(parsed, candidates);
         return (v !== undefined && v !== null && String(v).trim() !== '') ? v : existingVal;
       };
 
       const safeAdditionalDetails = (value) => {
-  if (!value) return '';
+        if (!value) return '';
 
-  if (typeof value === 'string') return value.trim();
+        if (typeof value === 'string') return value.trim();
 
-  if (typeof value === 'object') {
-    const formatObject = (obj, indent = '') => {
-      let result = '';
-      for (const key in obj) {
-        if (Object.hasOwn(obj, key)) {
-          const val = obj[key];
-          if (typeof val === 'object' && val !== null) {
-            result += `${indent}${key}:\n${formatObject(val, indent + '  ')}\n`;
-          } else {
-            result += `${indent}${key}: ${val}\n`;
-          }
+        if (typeof value === 'object') {
+          const formatObject = (obj, indent = '') => {
+            let result = '';
+            for (const key in obj) {
+              if (Object.hasOwn(obj, key)) {
+                const val = obj[key];
+                if (typeof val === 'object' && val !== null) {
+                  result += `${indent}${key}:\n${formatObject(val, indent + '  ')}\n`;
+                } else {
+                  result += `${indent}${key}: ${val}\n`;
+                }
+              }
+            }
+            return result.trim();
+          };
+          return formatObject(value);
         }
-      }
-      return result.trim();
-    };
-    return formatObject(value);
-  }
 
-  return String(value);
-};
+        return String(value);
+      };
 
       const parsedForm = {
         ...formData,
@@ -536,14 +620,14 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
       });
 
       if (!parserReturnedAnything) {
-        alert('⚠️ Resume parsed but the parser could not extract fields. Please fill details manually.');
+        showToast('⚠️ Resume parsed but the parser could not extract fields. Please fill details manually.');
       } else {
-        alert('✅ Resume parsed successfully! Please upload a photo, then click "Proceed to Form" button.');
+        showToast('✅ Resume parsed successfully! Please upload a photo, then click "Proceed to Form" button.');
       }
 
     } catch (error) {
       console.error('❌ Detailed error:', error);
-      alert(`❌ Error parsing resume: ${error.message}\n\nYou can still proceed and fill the form manually.`);
+      showToast(`❌ Error parsing resume: ${error.message}\n\nYou can still proceed and fill the form manually.`);
     } finally {
       setLoading(false);
     }
@@ -613,7 +697,7 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
     };
   };
 
-  // Download using template file
+  // Download using template file from assets
   const downloadUsingTemplate = async (data, photo) => {
     try {
       setLoading(true);
@@ -624,8 +708,20 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
       const ImageModule = (await import('docxtemplater-image-module-free')).default;
       const { saveAs } = await import('file-saver');
 
-      // Read template file
-      const templateArrayBuffer = await templateFile.arrayBuffer();
+      // Load template from assets instead of user upload
+      let templateArrayBuffer;
+      try {
+        // Try to load the template from assets folder
+        const templatePath = require('./assets/msxi-template.docx');
+        const response = await fetch(templatePath);
+        templateArrayBuffer = await response.arrayBuffer();
+      } catch (error) {
+        console.error('Error loading template from assets:', error);
+        showToast('❌ Template file not found in assets. Please ensure msxi-template.docx exists in src/assets/');
+        setLoading(false);
+        return;
+      }
+
       const zip = new PizZip(templateArrayBuffer);
 
       // Helper to convert base64 to buffer
@@ -681,7 +777,7 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
         overallExperience: data.overallExperience || '',
         coreSkillExperience: data.coreSkillExperience || '',
         qualifications: data.qualifications || '',
-        hackerRankScore: data.hackerRankScore ? data.hackerRankScore.toString().replace('%', ''): '',
+        hackerRankScore: data.hackerRankScore ? data.hackerRankScore.toString().replace('%', '') : '',
         skill1: data.skill1 || '',
         skill2: data.skill2 || '',
         skill3: data.skill3 || '',
@@ -715,11 +811,11 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
       saveAs(output, `${data.firstName}_${data.lastName}_MSXi_Resume.docx`);
 
       setLoading(false);
-      alert('✅ Word document generated from template successfully!');
+      showToast('✅ Word document generated successfully!');
     } catch (error) {
       setLoading(false);
       console.error('Error generating document from template:', error);
-      alert(`❌ Error: ${error.message}\n\nPlease ensure your template uses the correct placeholders:\n{firstName}, {lastName}, {overallExperience}, etc.`);
+      showToast(`❌ Error: ${error.message}\n\nPlease ensure the template file exists in src/assets/ with correct placeholders.`);
     }
   };
 
@@ -727,13 +823,8 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
     const data = profileData || formData;
     const photo = profilePhoto || photoPreview;
 
-    // If template file is provided, use template-based generation
-    if (templateFile) {
-      return downloadUsingTemplate(data, photo);
-    }
-
-    // Otherwise use basic Word generation
-    alert('⚠️ No template uploaded. Please upload a Word template for best results, or this will generate a basic document.');
+    // Always use template from assets
+    return downloadUsingTemplate(data, photo);
   };
 
   // Login Page
@@ -948,39 +1039,6 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
               </button>
             </div>
           </div>
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Msxi Template *
-            </label>
-            <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center bg-blue-50">
-              <Upload className="mx-auto h-10 w-10 text-blue-400 mb-2" />
-              <input
-                type="file"
-                accept=".docx"
-                onChange={handleTemplateUpload}
-                className="hidden"
-                id="template-upload"
-              />
-              <label
-                htmlFor="template-upload"
-                className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium"
-              >
-                Click to upload Word template (.docx)
-              </label>
-              {templateFile && (
-                <p className="mt-2 text-sm text-green-600">
-                  ✓ Uploaded: {templateFile.name}
-                </p>
-              )}
-            </div>
-            {!templateFile && (
-              <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                <p className="text-xs text-yellow-800">
-                  💡 <strong>Tip:</strong> Uploading a template is highly recommended! It will use your exact formatting, logos, and styling.
-                </p>
-              </div>
-            )}
-          </div>
 
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -990,7 +1048,7 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
               <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
               <input
                 type="file"
-                accept=".pdf,.doc,.docx,.txt"
+                accept=".pdf,.docx"
                 onChange={handleFileUpload}
                 className="hidden"
                 id="resume-upload"
@@ -1008,19 +1066,19 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
               )}
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Supports PDF and Word (.docx)files
+              Supports PDF and Word (.docx) files
             </p>
           </div>
 
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Photo *
+              Upload Photo (Image or PDF) *
             </label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
               <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,.pdf"
                 onChange={handlePhotoUpload}
                 className="hidden"
                 id="photo-upload"
@@ -1029,11 +1087,14 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
                 htmlFor="photo-upload"
                 className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium"
               >
-                Click to upload photo
+                Click to upload photo (JPG, PNG, or PDF)
               </label>
               {photoPreview && (
                 <div className="mt-4">
                   <img src={photoPreview} alt="Preview" className="mx-auto h-32 w-32 object-cover rounded" />
+                  {photoFile && photoFile.type === 'application/pdf' && (
+                    <p className="text-xs text-green-600 mt-2">✓ Extracted from PDF</p>
+                  )}
                 </div>
               )}
             </div>
@@ -1095,16 +1156,6 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
           >
             Proceed to Form
           </button>
-
-          {templateFile && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800 text-center">
-                ✓ Template loaded: <strong>{templateFile.name}</strong>
-                <br />
-                <span className="text-xs">Your final document will use this template's formatting</span>
-              </p>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -1489,8 +1540,8 @@ PROFESSIONAL EXPERIENCE (DETAILED)
 (Detailed job descriptions with responsibilities)
 
 KEY ACHIEVEMENTS
-• Achievement 1
-• Achievement 2
+- Achievement 1
+- Achievement 2
 
 CERTIFICATIONS & TRAINING
 (Your certifications)
@@ -1501,23 +1552,24 @@ DOMAIN EXPERTISE
           />
 
           <button
-onClick={() => {
-  const missingFields = [];
+            onClick={() => {
+              const missingFields = [];
 
-  if (!formData.firstName?.trim()) missingFields.push("First Name");
-  if (!formData.lastName?.trim())  missingFields.push("Last Name");
-  if (!formData.interviewDate?.trim())  missingFields.push("Interview Availability Date");
-  if (!formData.startDate?.trim())  missingFields.push("Start Availability Date");
-  if (!formData.noticePeriod?.trim())  missingFields.push("Notice Period");
-  if (missingFields.length > 0) {
-    showToast(
-      `⚠ Please fill the required fields:\n• ${missingFields.join("\n• ")}`
-    );
-    return;
-  }
+              if (!formData.firstName?.trim()) missingFields.push("First Name");
+              if (!formData.lastName?.trim()) missingFields.push("Last Name");
+              if (!formData.interviewDate?.trim()) missingFields.push("Interview Availability Date");
+              if (!formData.startDate?.trim()) missingFields.push("Start Availability Date");
+              if (!formData.noticePeriod?.trim()) missingFields.push("Notice Period");
 
-  setStep(4);
-}}
+              if (missingFields.length > 0) {
+                showToast(
+                  `⚠ Please fill the required fields:\n• ${missingFields.join("\n• ")}`
+                );
+                return;
+              }
+
+              setStep(4);
+            }}
             className="w-full bg-blue-900 text-white py-3 rounded-lg font-semibold hover:bg-blue-800 transition"
           >
             Generate Preview
@@ -1596,10 +1648,10 @@ onClick={() => {
               <button
                 onClick={() => downloadAsWord()}
                 className="px-6 py-2 bg-green-700 text-white rounded hover:bg-green-800 inline-flex items-center"
-                title={templateFile ? "Download using uploaded template" : "Download with basic formatting"}
+                title="Download using MSXi template"
               >
                 <FileText className="mr-2 h-4 w-4" />
-                {templateFile ? "Download as Word" : "Download as Word"}
+                Download as Word
               </button>
               <button
                 onClick={saveProfileToHistory}
@@ -1619,8 +1671,6 @@ onClick={() => {
               Logout
             </button>
           </div>
-
-
 
           <div id="cv-preview-content" className="preview-content max-w-4xl mx-auto bg-white shadow-lg content-wrapper cv-outer">
             <div className="watermark">CONFIDENTIAL</div>
@@ -1653,8 +1703,8 @@ onClick={() => {
                       <div>
                         <p className="field-label">Notice Period of the candidate:<span className="field-label">{formData.noticePeriod}</span></p>
                       </div>
-                     </div>
-                      <div className="mt-4">
+                    </div>
+                    <div className="mt-4">
                       <div>
                         <p className="field-label">Internal or External Candidate:<span className="field-label">{formData.candidateType}</span></p>
                       </div>
@@ -1665,7 +1715,7 @@ onClick={() => {
                         <p className="field-label">Interview Availability Date:<span className="field-label">{formatDate(formData.interviewDate) || 'DD-Mon-YYYY'}</span></p>
                       </div>
                     </div>
-                      <div className="mt-4">
+                    <div className="mt-4">
                       <div>
                         <p className="field-label">Start Availability Date:<span className="field-label">{formatDate(formData.startDate) || 'DD-Mon-YYYY'}</span></p>
                       </div>
@@ -1675,9 +1725,9 @@ onClick={() => {
                         <p className="field-label">
                           Has the candidate worked directly for Ford before?
                           <span className="field-label">
-                            <span style={{backgroundColor: formData.workedForFord === 'Yes' ? '#FFFF00' : 'transparent'}}>Yes</span>
+                            <span style={{ backgroundColor: formData.workedForFord === 'Yes' ? '#FFFF00' : 'transparent' }}>Yes</span>
                             /
-                            <span style={{backgroundColor: formData.workedForFord === 'No' ? '#FFFF00' : 'transparent'}}>No</span>
+                            <span style={{ backgroundColor: formData.workedForFord === 'No' ? '#FFFF00' : 'transparent' }}>No</span>
                           </span>
                         </p>
                       </div>
@@ -1685,28 +1735,28 @@ onClick={() => {
                         <p className="field-label">
                           Has the candidate worked for Ford as an Agency worker before?
                           <span className="field-label">
-                            <span style={{backgroundColor: formData.workedAsAgency === 'Yes' ? '#FFFF00' : 'transparent'}}>Yes</span>
+                            <span style={{ backgroundColor: formData.workedAsAgency === 'Yes' ? '#FFFF00' : 'transparent' }}>Yes</span>
                             /
-                            <span style={{backgroundColor: formData.workedAsAgency === 'No' ? '#FFFF00' : 'transparent'}}>No</span>
+                            <span style={{ backgroundColor: formData.workedAsAgency === 'No' ? '#FFFF00' : 'transparent' }}>No</span>
                           </span>
                         </p>
                       </div>
                     </div>
 
-                      <div className="mb-6 pl-6">
-                        <p className="font-bold field-label">If yes to either of the above, please specify the below details:</p>
-                        <div className="space-y-1 pl-10">
-                          <p className="field-label"><span className="field-label">i. CDSID:</span> {formData.cdsid}</p>
-                          <p className="field-label"><span className="field-label">ii. Supervisor:</span> {formData.supervisor}</p>
-                          <p className="field-label"><span className="field-label">iii. Duration of the Project:</span> {formData.projectDuration}</p>
-                          <p className="field-label"><span className="field-label">iv. Exit reason:</span> {formData.exitReason}</p>
-                        </div>
+                    <div className="mb-6 pl-6">
+                      <p className="font-bold field-label">If yes to either of the above, please specify the below details:</p>
+                      <div className="space-y-1 pl-10">
+                        <p className="field-label"><span className="field-label">i. CDSID:</span> {formData.cdsid}</p>
+                        <p className="field-label"><span className="field-label">ii. Supervisor:</span> {formData.supervisor}</p>
+                        <p className="field-label"><span className="field-label">iii. Duration of the Project:</span> {formData.projectDuration}</p>
+                        <p className="field-label"><span className="field-label">iv. Exit reason:</span> {formData.exitReason}</p>
                       </div>
+                    </div>
 
                     <div className="mt-4">
                       <p className="field-label">Overall IT Experience:<span className="field-label">{formData.overallExperience}</span></p>
                     </div>
-                    <div  className="mt-4">
+                    <div className="mt-4">
                       <p className="field-label">Experience in Core Skill:<span className="field-label">{formData.coreSkillExperience}</span></p>
                     </div>
                     <div className="mt-4">
@@ -1736,20 +1786,20 @@ onClick={() => {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 items-start mt-5"></div>
-                  <div className="cv-title-bar-edu">
-                    <h1 className="text-center m-0">EDUCATIONAL HISTORY</h1>
-                  </div>
+                <div className="cv-title-bar-edu">
+                  <h1 className="text-center m-0">EDUCATIONAL HISTORY</h1>
+                </div>
 
-                  <div className="mt-4">
-                    <p className="field-label underline">Educational History:</p>
-                    <p className="field-label underline">University Degree</p>
-                    {formData.bachelorDuration && (
-                      <p className="field-label underline mt-1">Duration: {formData.bachelorDuration}</p>
-                    )}
-                    <p className="field-label underline mt-1">{formData.bachelorDetails}</p>
-                  </div>
+                <div className="mt-4">
+                  <p className="field-label underline">Educational History:</p>
+                  <p className="field-label underline">University Degree</p>
+                  {formData.bachelorDuration && (
+                    <p className="field-label underline mt-1">Duration: {formData.bachelorDuration}</p>
+                  )}
+                  <p className="field-label underline mt-1">{formData.bachelorDetails}</p>
+                </div>
 
-                  {formData.masterDuration && (
+                {formData.masterDuration && (
                   <div className="mt-4">
                     <p className="field-label underline">University Degree Master</p>
                     <p className="field-label underline">Duration: {formData.masterDuration}</p>
@@ -1757,11 +1807,11 @@ onClick={() => {
                   </div>
                 )}
 
-                 <div className="cv-title-bar-edu mt-4">
-                    <h1 className="text-center m-0">EMPLOYMENT HISTORY (Please start with most recent employment)</h1>
-                  </div>
+                <div className="cv-title-bar-edu mt-4">
+                  <h1 className="text-center m-0">EMPLOYMENT HISTORY (Please start with most recent employment)</h1>
+                </div>
 
-                   {formData.employmentHistory.map((emp, index) => (
+                {formData.employmentHistory.map((emp, index) => (
                   <div key={index} className="mb-4 mt-20 ml-20">
                     <ul className="list-none space-y-1">
                       <li className="footerText">- <span className="footerText">Start Date/End Date/Duration:</span> {emp.duration}</li>
@@ -1782,26 +1832,20 @@ onClick={() => {
                       <h1 className="text-center m-0">ADDITIONAL PROFESSIONAL INFORMATION</h1>
                     </div>
                     <div className="mt-6 ml-20 mr-20 mb-8">
-                      <div className="footerText whitespace-pre-line" style={{lineHeight: '1.6'}}>{formData.additionalDetails}</div>
+                      <div className="footerText whitespace-pre-line" style={{ lineHeight: '1.6' }}>{formData.additionalDetails}</div>
                     </div>
                   </>
                 )}
-
-
-                </div>
               </div>
-
-
-
             </div>
           </div>
+        </div>
       </>
     );
   }
 
   return null;
 };
-
 
 export function showToast(message, duration = 2500) {
   const toast = document.createElement("div");
