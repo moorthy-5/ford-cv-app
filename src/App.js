@@ -207,6 +207,62 @@ const CVTemplateApp = () => {
     setStep(3);
   };
 
+  // Helper function to clean AI response and extract valid JSON
+  const cleanAndParseJSON = (text) => {
+    try {
+      // First attempt: direct parse
+      return JSON.parse(text);
+    } catch (e1) {
+      console.log('⚠️ Direct parse failed, attempting cleanup...');
+
+      try {
+        // Remove markdown code blocks
+        let cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+        // Remove any text before first {
+        const firstBrace = cleaned.indexOf('{');
+        if (firstBrace > 0) {
+          cleaned = cleaned.substring(firstBrace);
+        }
+
+        // Remove any text after last }
+        const lastBrace = cleaned.lastIndexOf('}');
+        if (lastBrace > 0 && lastBrace < cleaned.length - 1) {
+          cleaned = cleaned.substring(0, lastBrace + 1);
+        }
+
+        // Try to fix common escape issues
+        cleaned = cleaned
+          .replace(/[\r]/g, ''); // Remove carriage returns
+
+        return JSON.parse(cleaned);
+      } catch (e2) {
+        console.log('⚠️ Cleanup parse failed, attempting aggressive cleanup...');
+
+        try {
+          // Most aggressive cleanup - extract JSON object structure
+          let aggressive = text;
+          const start = aggressive.indexOf('{');
+          const end = aggressive.lastIndexOf('}');
+
+          if (start === -1 || end === -1) {
+            throw new Error('No JSON object found');
+          }
+
+          aggressive = aggressive.substring(start, end + 1);
+
+          // Remove any control characters that might break JSON
+          aggressive = aggressive.replace(/[\x00-\x1F\x7F-\x9F]/g, ' ');
+
+          return JSON.parse(aggressive);
+        } catch (e3) {
+          console.error('❌ All parsing attempts failed');
+          throw new Error('Could not parse JSON from AI response');
+        }
+      }
+    }
+  };
+
   // Handle photo upload (supports PDF and images)
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
@@ -275,7 +331,7 @@ const CVTemplateApp = () => {
     }
   };
 
-  // Extract text from PDF using PDF.js
+  // Extract text from PDF using PDF.js (IGNORING IMAGES)
   const extractTextFromPDF = async (file) => {
     return new Promise(async (resolve, reject) => {
       try {
@@ -297,15 +353,33 @@ const CVTemplateApp = () => {
 
         let fullText = '';
 
+        console.log(`📄 Extracting text from ${pdf.numPages} pages (ignoring images)...`);
+
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
           const textContent = await page.getTextContent();
-          const pageText = textContent.items.map(item => item.str).join(' ');
+
+          // Extract only text items, completely ignoring any image/graphic operators
+          const pageText = textContent.items
+            .filter(item => item.str && item.str.trim().length > 0) // Only items with actual text
+            .map(item => item.str)
+            .join(' ');
+
           fullText += pageText + '\n';
+
+          console.log(`✅ Page ${i}/${pdf.numPages} extracted: ${pageText.length} characters`);
         }
 
+        // Clean up any remaining image artifacts or special characters
+        fullText = fullText
+          .replace(/[^\x20-\x7E\n\r\t]/g, '') // Remove non-printable characters
+          .replace(/\s+/g, ' ') // Normalize whitespace
+          .trim();
+
+        console.log(`✅ Total text extracted: ${fullText.length} characters (images excluded)`);
         resolve(fullText);
       } catch (error) {
+        console.error('❌ Error extracting text from PDF:', error);
         reject(error);
       }
     });
@@ -344,7 +418,7 @@ const CVTemplateApp = () => {
       console.log('📄 Processing file:', file.name, 'Type:', file.type);
 
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-        console.log('🔍 Detected PDF file, extracting text...');
+        console.log('🔍 Detected PDF file, extracting text (ignoring images)...');
         resumeText = await extractTextFromPDF(file);
         console.log('✅ PDF text extracted, length:', resumeText.length);
       }
@@ -405,13 +479,24 @@ const CVTemplateApp = () => {
               },
               {
                 type: 'text',
-                text: `Extract the following information from this resume and return ONLY a JSON object with no markdown formatting or backticks:
+                text: `You are parsing a resume/CV document. Extract ONLY text information and return a JSON object.
+
+🚫 CRITICAL INSTRUCTIONS - MUST FOLLOW:
+1. COMPLETELY IGNORE all images, logos, certification badges, icons, graphics, and visual elements
+2. Do NOT describe or mention any visual content whatsoever
+3. If you see certification logos (Oracle, IBM, Kubernetes, etc.), extract only the TEXT of the certification name, not the logo
+4. Extract ONLY plain text information
+5. Return ONLY valid JSON with properly escaped strings
+6. NO markdown formatting, NO backticks, NO additional commentary
+
+Extract the following information and return ONLY this JSON structure:
+
 {
   "firstName": "candidate's first name",
   "lastName": "candidate's last name",
   "overallExperience": "total years of experience (e.g., '7.4 years')",
   "coreSkillExperience": "years in primary technology",
-  "qualifications": "certifications or qualifications",
+  "qualifications": "certifications TEXT ONLY - ignore all logos and images (e.g., 'Oracle WebLogic Administrator, IBM Certified')",
   "hackerRankScore": "hacker rank score as percentage only (e.g., '85' without % symbol)",
   "skill1": "top skill 1",
   "skill2": "top skill 2",
@@ -429,41 +514,57 @@ const CVTemplateApp = () => {
       "role": "detailed role description and achievements"
     }
   ],
-  "additionalDetails": "Extract ALL remaining professional information from the resume in a well-formatted, structured text format. Include these sections if present:
+  "additionalDetails": "Extract ALL remaining professional TEXT information in a structured format.
+
+⚠️ IGNORE ALL IMAGES, LOGOS, BADGES - EXTRACT ONLY TEXT
+
+Include these sections if TEXT is present:
 
 PROFESSIONAL SUMMARY
-(Complete professional summary/objective from resume)
+(Professional summary text)
 
 TECHNICAL SKILLS
-(All technical skills organized by categories like: Cloud Platforms, Programming Languages, Databases, Tools, Frameworks, etc.)
-
-PROFESSIONAL EXPERIENCE (DETAILED)
-(For each job, include: Company, Duration, Project name, Tech Stack, Key Responsibilities in detail, Achievements)
-
-KEY ACHIEVEMENTS
-(All notable achievements, awards, recognitions)
+(List skills as text: Cloud Platforms, Programming Languages, Databases, Tools, Frameworks)
 
 CERTIFICATIONS & TRAINING
-(All certifications, courses, training programs)
+(List certification NAMES as text only, ignore logos)
+Example:
+- Oracle WebLogic Server Administrator
+- IBM Certified Solutions Architect
+- Kubernetes Certified Administrator
+
+PROFESSIONAL EXPERIENCE (DETAILED)
+(Company, Duration, Project, Tech Stack, Responsibilities, Achievements)
+
+KEY ACHIEVEMENTS
+(Notable achievements, awards, recognitions)
 
 DOMAIN EXPERTISE
-(Areas of domain knowledge and expertise)
+(Areas of expertise)
 
 PROJECTS
-(Any academic or personal projects)
+(Project details)
 
 PUBLICATIONS & RESEARCH
-(Any published papers or research work)
+(Published work)
 
 PROFESSIONAL MEMBERSHIPS
-(Associations, communities, memberships)
+(Associations, communities)
 
-Include ALL professional information that adds value to the candidate profile.
-EXCLUDE: Phone numbers, email addresses, physical addresses, date of birth, religion, marital status, nationality, languages spoken (unless professionally relevant), gender, photographs, passport details, Aadhar/PAN numbers.
-Format this as clear, readable text with proper section headings and line breaks."
+EXCLUDE: Phone numbers, email addresses, physical addresses, date of birth, religion, marital status, nationality, passport details, Aadhar/PAN numbers, ALL IMAGES, ALL LOGOS, ALL VISUAL ELEMENTS.
+
+Format as clear, readable text with section headings and line breaks."
 }
 
-IMPORTANT: Return ONLY the JSON object, no other text.`
+⚠️ FINAL REMINDER:
+- Return ONLY the JSON object
+- NO text before or after the JSON
+- NO markdown backticks
+- IGNORE ALL IMAGES AND VISUAL ELEMENTS
+- Ensure all strings are properly escaped
+- If you cannot extract a field, use empty string ""
+
+Return the JSON now:`
               }
             ]
           }]
@@ -501,17 +602,19 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
         throw new Error('No text content in API response');
       }
 
-      const cleanedText = textContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      // Use the improved JSON parser
       let parsed = {};
       try {
-        parsed = JSON.parse(cleanedText);
+        parsed = cleanAndParseJSON(textContent);
+        console.log('✅ Parsed data:', parsed);
       } catch (e) {
-        console.error('Failed to parse JSON from AI response:', e, cleanedText);
+        console.error('Failed to parse JSON from AI response:', e);
+        console.error('Raw response:', textContent);
+        showToast('⚠️ Resume parsing failed. The document may contain complex formatting or images.\n\nPlease fill the form manually.');
         throw new Error('Failed to parse resume data from the parser.');
       }
-      console.log('✅ Parsed data:', parsed);
 
-      setParsedJsonText(cleanedText);
+      setParsedJsonText(textContent);
       setParsedObject(parsed);
       setParsedResponseRaw(JSON.stringify(data, null, 2));
 
@@ -972,51 +1075,35 @@ IMPORTANT: Return ONLY the JSON object, no other text.`
     );
   }
 
-if (step === 1) {
-  return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
-        {/* Professional Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-blue-900 mb-4">MSXI Formatter</h1>
-          <div className="border-b-2 border-gray-200 mb-4"></div>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => setStep(5)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium shadow-sm"
-            >
-              <History className="w-4 h-4" />
-              View History
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium shadow-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              Logout
-            </button>
+  if (step === 1) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold text-blue-900">MSXI Formatter</h1>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setStep(5)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
+              >
+                <History className="w-4 h-4" />
+                View History
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
+              </button>
+            </div>
           </div>
 
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Upload Resume (PDF or Docx) *
-          </label>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-            <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
-            <input
-              type="file"
-              accept=".pdf,.doc,.docx,.txt"
-              onChange={handleFileUpload}
-              className="hidden"
-              id="resume-upload"
-            />
-            <label
-              htmlFor="resume-upload"
-              className="cursor-pointer text-blue-600 hover:text-blue-800 font-medium"
-            >
-              Click to upload resume
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Upload Resume (PDF or Docx) *
             </label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
               <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
@@ -1040,13 +1127,9 @@ if (step === 1) {
               )}
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Supports PDF and Word (.docx) files
+              Supports PDF and Word (.docx) files. Images will be ignored during text extraction.
             </p>
           </div>
-          <p className="mt-2 text-xs text-gray-500">
-            Supports PDF and Word (.docx)files
-          </p>
-        </div>
 
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1077,29 +1160,55 @@ if (step === 1) {
               )}
             </div>
           </div>
-        </div>
 
-        {resumeParsed && (
-          <div className="mb-6 border rounded-lg p-4 bg-white">
-            <h3 className="text-lg font-semibold text-blue-900 mb-2">Parsed Resume Summary</h3>
-            <div className="grid grid-cols-2 gap-4 mb-3">
-              <div>
-                <p className="text-sm text-gray-700">First Name</p>
-                <p className="font-medium">{formData.firstName || (parsedObject && parsedObject.firstName) || '—'}</p>
+          {resumeParsed && (
+            <div className="mb-6 border rounded-lg p-4 bg-white">
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">Parsed Resume Summary</h3>
+              <div className="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                  <p className="text-sm text-gray-700">First Name</p>
+                  <p className="font-medium">{formData.firstName || (parsedObject && parsedObject.firstName) || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-700">Last Name</p>
+                  <p className="font-medium">{formData.lastName || (parsedObject && parsedObject.lastName) || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-700">Overall Experience</p>
+                  <p className="font-medium">{formData.overallExperience || (parsedObject && parsedObject.overallExperience) || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-700">Core Skill Experience</p>
+                  <p className="font-medium">{formData.coreSkillExperience || (parsedObject && parsedObject.coreSkillExperience) || '—'}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-700">Last Name</p>
-                <p className="font-medium">{formData.lastName || (parsedObject && parsedObject.lastName) || '—'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-700">Overall Experience</p>
-                <p className="font-medium">{formData.overallExperience || (parsedObject && parsedObject.overallExperience) || '—'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-700">Core Skill Experience</p>
-                <p className="font-medium">{formData.coreSkillExperience || (parsedObject && parsedObject.coreSkillExperience) || '—'}</p>
-              </div>
+
+              <h4 className="font-semibold mb-2">Ready checklist</h4>
+              <ul className="list-inside list-none space-y-1 text-sm">
+                <li>
+                  {resumeParsed ? (
+                    <span className="text-green-700">✓ Resume parsed</span>
+                  ) : (
+                    <span className="text-red-600">✕ Resume not parsed</span>
+                  )}
+                </li>
+                <li>
+                  {photoPreview ? (
+                    <span className="text-green-700">✓ Photo uploaded</span>
+                  ) : (
+                    <span className="text-red-600">✕ Photo missing</span>
+                  )}
+                </li>
+              </ul>
             </div>
+          )}
+
+          {loading && (
+            <div className="flex items-center justify-center py-4 bg-blue-50 rounded-lg mb-4">
+              <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+              <span className="ml-2 text-blue-900 font-medium">Parsing resume with AI...</span>
+            </div>
+          )}
 
           <button
             onClick={() => openForm()}
@@ -1110,9 +1219,8 @@ if (step === 1) {
           </button>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   if (step === 3) {
     return (
