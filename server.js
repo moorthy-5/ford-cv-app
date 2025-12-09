@@ -6,7 +6,7 @@ const path = require('path');
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-
+require('dotenv').config();
 // Helper function to clean and truncate text
 function cleanAndTruncateText(text, maxTokens = 8000) {
   let cleaned = text
@@ -116,11 +116,14 @@ app.post('/api/parse-resume', async (req, res) => {
 
 // Serve React build instead of public
 app.use(express.static(path.join(__dirname, 'build')));
-
-// Catch-all for React router
-app.get('/{*splat}', (req, res) => {
+app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
+
+// // Catch-all for React router
+// app.get('/{*splat}', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'build', 'index.html'));
+// });
 
 // // ----------------------------
 // // Serve React frontend from public folder
