@@ -432,48 +432,92 @@ IMPORTANT INSTRUCTIONS:
       "duration": "Start Date to End Date (e.g., 'Jun 2018 to till date')",
       "company": "company name",
       "title": "job title",
-      "technology": "technologies used",
-      "role": "detailed role description and achievements"
+      "technology": "technologies used as same as uploaded file",
+      "role": "summarize role description and achievements within 3 lines"
     }
   ],
-  "additionalDetails": "Extract ALL remaining professional information from the resume in a well-formatted, structured text format.
+  "additionalDetails": "APPEND ALL the details from resume as same as uploaded file in a well-structured format with proper bullet points and indentation to reflect original content.
 
 IMPORTANT:
 - IGNORE all images, certification logos, badges, and visual elements
-- Extract ONLY text content
-- Include these sections if present (text only):
+- PRESERVE the original structure of the resume, including the exact order and hierarchy of sections and information
+- FOR each section (e.g., PROFILE SUMMARY, PROFESSIONAL SUMMARY, TECHNICAL SKILLS, WORK EXPERIENCE, PROJECT DETAILS etc.), ensure bullet points are used where appropriate
+- PRESERVE indentation for sub-bullet points, especially in areas like roles, responsibilities, skills, and achievements
+- Split combined sentences into separate lines where applicable
+- Ensure that each bullet point represents one distinct item of information, such as a skill, responsibility, or experience
+- Do NOT shorten, summarize, or paraphrase roles, responsibilities, achievements, or descriptions
+- Do NOT add additional bullet symbols for sub-lines but indent continuation lines for better readability
+- Indent all continuation lines with 5 spaces
+- Output must be a plain text string with consistent bullet formatting and indentation
+
+- Treat additionalDetails as RAW RESUME TEXT
+- Preserve all line breaks, section headings, bullet symbols, colons, parentheses, special characters, and whitespace exactly as in the uploaded resume
+- Do NOT merge lines or restructure content
+- Metadata lines (e.g., Client:, Technologies used:) must remain on their own lines and not be converted into bullets
+- Bullets present in the resume (• or -) must remain exactly as-is
+- Each bullet point from the original resume must appear on a separate line
 
 PROFESSIONAL SUMMARY
-(Complete professional summary/objective from resume)
+- If the professional summary contains multiple sentences, experience statements, skill highlights, or achievements:
+  - Convert EACH distinct sentence into a separate bullet using "•"
+  - Preserve the original wording exactly as in the resume
+  - Do NOT merge, paraphrase, or summarize
+  - Maintain original sentence order
 
 TECHNICAL SKILLS
-(All technical skills organized by categories like: Cloud Platforms, Programming Languages, Databases, Tools, Frameworks, etc.)
+- Treat EACH skill category as ONE bullet point using "•"
+- Format MUST be exactly:
+  • <Category Name>: <skills exactly as in resume>
+- Do NOT break skills into new lines
+- Do NOT indent skills on separate lines
+- Preserve original order, wording, commas, and spacing
+- Do NOT regroup, rename, or reclassify skills
 
-CERTIFICATIONS & TRAINING
-(List certification NAMES only - ignore logos and badges. Example: 'IBM Certified Solutions Architect', 'Oracle WebLogic Administrator')
+GLOBAL BULLET RULE:
+- Use "•" for all PRIMARY (top-level) bullet points
+- Use "-" ONLY for SECONDARY (child) bullet points such as:
+  - Roles and Responsibilities under a job, project, or training
+  - Sub-points under a primary bullet
+- NEVER replace an existing bullet symbol from the resume
+- If the resume already contains a bullet symbol, preserve it exactly
+- Do NOT normalize bullet symbols across sections
 
-PROFESSIONAL EXPERIENCE (DETAILED)
-(For each job, include: Company, Duration, Project name, Tech Stack, Key Responsibilities in detail, Achievements)
-
-KEY ACHIEVEMENTS
-(All notable achievements, awards, recognitions)
-
-DOMAIN EXPERTISE
-(Areas of domain knowledge and expertise)
-
-PROJECTS
-(Any academic or personal projects)
-
-PUBLICATIONS & RESEARCH
-(Any published papers or research work)
-
-PROFESSIONAL MEMBERSHIPS
-(Associations, communities, memberships)
-
-Include ALL professional information that adds value to the candidate profile.
 EXCLUDE: Phone numbers, email addresses, physical addresses, date of birth, religion, marital status, nationality, languages spoken (unless professionally relevant), gender, photographs, passport details, Aadhar/PAN numbers, images, logos, badges, visual elements.
-Format this as clear, readable text with proper section headings and line breaks."
+
+FORMAT:
+- Ensure clear readability with proper indentation and line breaks
+- DO NOT shorten or summarize any content; preserve original descriptions exactly as in the resume."
 }
+
+PRIMARY & SECONDARY SKILL GROUPING RULE:
+
+- skill1 MUST represent the PRIMARY BACKEND TECHNOLOGY STACK
+  - Include:
+    • Core programming language
+    • Main backend framework(s)
+  - Example format:
+    "Java, Spring Boot, Quarkus"
+
+- skill2 MUST represent the PRIMARY FRONTEND TECHNOLOGY STACK (if present)
+  - Include:
+    • Frontend framework
+    • Primary frontend language
+  - Example format:
+    "Angular, TypeScript"
+
+- skill3 MUST represent the CLOUD / PLATFORM STACK
+  - Include:
+    • Cloud providers
+    • Container platforms if mentioned
+  - Example format:
+    "AWS, OpenShift, GCP"
+
+FORMATTING RULES FOR skill1, skill2, skill3:
+- Use comma-separated values in a single line
+- Do NOT add versions unless explicitly required
+- Do NOT include tools (IDE, CI/CD tools, monitoring)
+- Do NOT repeat the same technology across multiple skills
+- Preserve original technology names exactly as in the resume
 
 CRITICAL RULES:
 1. Return ONLY the JSON object
@@ -565,7 +609,7 @@ console.log('✅ Parsed data:', parsed);
       const safeAdditionalDetails = (value) => {
         if (!value) return '';
 
-        if (typeof value === 'string') return value.trim();
+        if (typeof value === 'string') return value;
 
         if (typeof value === 'object') {
           const formatObject = (obj, indent = '') => {
@@ -580,7 +624,7 @@ console.log('✅ Parsed data:', parsed);
                 }
               }
             }
-            return result.trim();
+            return result;
           };
           return formatObject(value);
         }
@@ -792,7 +836,7 @@ console.log('✅ Parsed data:', parsed);
           technology: emp.technology || '',
           role: emp.role || ''
         })),
-        additionalDetails: (data.additionalDetails || '').trim(),
+        additionalDetails: (data.additionalDetails || '').replace(/^ {5}/gm, '\t'),
         hasAdditionalDetails: !!(data.additionalDetails && data.additionalDetails.trim()),
         photo: photo || '',
         hasPhoto: !!photo
@@ -1794,16 +1838,16 @@ DOMAIN EXPERTISE
                   <p className="field-label underline">Educational History:</p>
                   <p className="field-label underline">University Degree</p>
                   {formData.bachelorDuration && (
-                    <p className="field-label underline mt-1">Duration: {formData.bachelorDuration}</p>
+                    <p className="field-label mt-1">Duration: {formData.bachelorDuration}</p>
                   )}
-                  <p className="field-label underline mt-1">{formData.bachelorDetails}</p>
+                  <p className="field-label mt-1">{formData.bachelorDetails}</p>
                 </div>
 
                 {formData.masterDuration && (
                   <div className="mt-4">
                     <p className="field-label underline">University Degree Master</p>
-                    <p className="field-label underline">Duration: {formData.masterDuration}</p>
-                    <p className="mt-1 field-label underline">{formData.masterDetails}</p>
+                    <p className="field-label">Duration: {formData.masterDuration}</p>
+                    <p className="mt-1 field-label">{formData.masterDetails}</p>
                   </div>
                 )}
 
@@ -1812,7 +1856,7 @@ DOMAIN EXPERTISE
                 </div>
 
                 {formData.employmentHistory.map((emp, index) => (
-                  <div key={index} className="mb-4 mt-20 ml-20">
+                  <div key={index} className="mb-4 mt-8 ml-8">
                     <ul className="list-none space-y-1">
                       <li className="footerText">- <span className="footerText">Start Date/End Date/Duration:</span> {emp.duration}</li>
                       <li className="footerText">- <span className="footerText">Company name:</span> {emp.company}</li>
@@ -1821,7 +1865,7 @@ DOMAIN EXPERTISE
                       <li className="footerText">- <span className="footerText">Role of the candidate in the Project:</span> {emp.title}</li>
                     </ul>
                     {emp.role && (
-                      <p className="footerText mt-4">{emp.role}</p>
+                      <p className="footerText mt-2">{emp.role}</p>
                     )}
                   </div>
                 ))}
@@ -1832,7 +1876,7 @@ DOMAIN EXPERTISE
                       <h1 className="text-center m-0">ADDITIONAL PROFESSIONAL INFORMATION</h1>
                     </div>
                     <div className="mt-6 ml-20 mr-20 mb-8">
-                      <div className="footerText whitespace-pre-line" style={{ lineHeight: '1.6' }}>{formData.additionalDetails}</div>
+                      <div className="footerText whitespace-pre-line" style={{ whiteSpace: 'pre-wrap',lineHeight: '1.6' }}>{formData.additionalDetails}</div>
                     </div>
                   </>
                 )}
