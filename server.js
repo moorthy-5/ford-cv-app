@@ -53,9 +53,9 @@ app.post('/api/parse-resume', async (req, res) => {
     const cleanedResume = cleanAndTruncateText(resumeText, 8000);
     console.log('🧹 Cleaned resume length:', cleanedResume.length, 'characters');
 
-    const extractPrompt = messages[0].content.find(c =>
+    const extractPrompt = Array.isArray(messages[0].content)? messages[0].content.find(c =>
       c.type === 'text' && c.text.includes('Extract the following')
-    );
+    ) : null;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -111,6 +111,83 @@ app.post('/api/parse-resume', async (req, res) => {
       error: error.message,
       stack: error.stack
     });
+  }
+});
+
+app.post('/api/additional-details', async (req, res) => {
+  try {
+    const { resumeText } = req.body;
+    const apiKey = process.env.OPENAI_API_KEY;
+
+    const cleanedResume = cleanAndTruncateText(resumeText);
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `
+            You are a professional resume formatter.
+
+            Return the resume as clean structured plain text.
+
+            STRICT RULES:
+            - Preserve headings, sections, bullets, spacing
+            - Maintain original structure
+            - Do NOT return JSON
+            - Do NOT explain anything
+
+            🚨 EXCLUDE COMPLETELY:
+            - Phone numbers
+            - Email addresses
+            - Physical addresses
+            - Date of birth
+            - Religion
+            - Marital status
+            - Nationality
+            - Languages spoken (unless professionally relevant)
+            - Gender
+            - Passport details
+            - Aadhar/PAN numbers
+            - Images, logos, badges, visual elements
+
+            IMPORTANT:
+            - REMOVE these fields entirely (not masked)
+            - KEEP only professional content:
+              • Experience
+              • Skills
+              • Projects
+              • Education
+              • Certifications
+
+            Return ONLY cleaned resume text.
+            `
+          },
+          {
+            role: 'user',
+            content: cleanedResume
+          }
+        ],
+        temperature: 0.2,
+        max_tokens: 3500
+      })
+    });
+
+    const data = await response.json();
+
+    res.json({
+      text: data.choices[0].message.content
+    });
+
+  } catch (err) {
+    console.error('❌ additional-details error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -435,58 +435,7 @@ IMPORTANT INSTRUCTIONS:
       "technology": "technologies used as same as uploaded file",
       "role": "summarize role description and achievements within 3 lines"
     }
-  ],
-  "additionalDetails": "APPEND ALL the details from resume as same as uploaded file in a well-structured format with proper bullet points and indentation to reflect original content.
-
-IMPORTANT:
-- IGNORE all images, certification logos, badges, and visual elements
-- PRESERVE the original structure of the resume, including the exact order and hierarchy of sections and information
-- FOR each section (e.g., PROFILE SUMMARY, PROFESSIONAL SUMMARY, TECHNICAL SKILLS, WORK EXPERIENCE, PROJECT DETAILS etc.), ensure bullet points are used where appropriate
-- PRESERVE indentation for sub-bullet points, especially in areas like roles, responsibilities, skills, and achievements
-- Split combined sentences into separate lines where applicable
-- Ensure that each bullet point represents one distinct item of information, such as a skill, responsibility, or experience
-- Do NOT shorten, summarize, or paraphrase roles, responsibilities, achievements, or descriptions
-- Do NOT add additional bullet symbols for sub-lines but indent continuation lines for better readability
-- Indent all continuation lines with 5 spaces
-- Output must be a plain text string with consistent bullet formatting and indentation
-
-- Treat additionalDetails as RAW RESUME TEXT
-- Preserve all line breaks, section headings, bullet symbols, colons, parentheses, special characters, and whitespace exactly as in the uploaded resume
-- Do NOT merge lines or restructure content
-- Metadata lines (e.g., Client:, Technologies used:) must remain on their own lines and not be converted into bullets
-- Bullets present in the resume (• or -) must remain exactly as-is
-- Each bullet point from the original resume must appear on a separate line
-
-PROFESSIONAL SUMMARY
-- If the professional summary contains multiple sentences, experience statements, skill highlights, or achievements:
-  - Convert EACH distinct sentence into a separate bullet using "•"
-  - Preserve the original wording exactly as in the resume
-  - Do NOT merge, paraphrase, or summarize
-  - Maintain original sentence order
-
-TECHNICAL SKILLS
-- Treat EACH skill category as ONE bullet point using "•"
-- Format MUST be exactly:
-  • <Category Name>: <skills exactly as in resume>
-- Do NOT break skills into new lines
-- Do NOT indent skills on separate lines
-- Preserve original order, wording, commas, and spacing
-- Do NOT regroup, rename, or reclassify skills
-
-GLOBAL BULLET RULE:
-- Use "•" for all PRIMARY (top-level) bullet points
-- Use "-" ONLY for SECONDARY (child) bullet points such as:
-  - Roles and Responsibilities under a job, project, or training
-  - Sub-points under a primary bullet
-- NEVER replace an existing bullet symbol from the resume
-- If the resume already contains a bullet symbol, preserve it exactly
-- Do NOT normalize bullet symbols across sections
-
-EXCLUDE: Phone numbers, email addresses, physical addresses, date of birth, religion, marital status, nationality, languages spoken (unless professionally relevant), gender, photographs, passport details, Aadhar/PAN numbers, images, logos, badges, visual elements.
-
-FORMAT:
-- Ensure clear readability with proper indentation and line breaks
-- DO NOT shorten or summarize any content; preserve original descriptions exactly as in the resume."
+  ]
 }
 
 PRIMARY & SECONDARY SKILL GROUPING RULE:
@@ -564,9 +513,32 @@ CRITICAL RULES:
 
       const cleanedText = textContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 let parsed = {};
+let additionalDetails = "";
 try {
   parsed = JSON.parse(cleanedText);
   console.log('✅ Parsed data:', parsed);
+
+  // 🔥 SECOND API CALL FOR additionalDetails
+  try {
+    const additionalResponse = await fetch('/api/additional-details', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        resumeText: resumeText
+      })
+    });
+
+    const additionalData = await additionalResponse.json();
+    const additionalDataCleanedText = additionalData?.text?.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    additionalDetails = additionalDataCleanedText || "";
+
+    console.log('✅ additionalDetails received');
+
+  } catch (err) {
+    console.error('❌ additionalDetails API failed:', err);
+  }
 } catch (e) {
   console.error('Failed to parse JSON from AI response:', e, cleanedText);
 
@@ -647,7 +619,7 @@ console.log('✅ Parsed data:', parsed);
         masterDuration: getParsedOrExisting(['masterDuration', 'master_duration'], formData.masterDuration),
         masterDetails: getParsedOrExisting(['masterDetails', 'master_details'], formData.masterDetails),
         employmentHistory: (parsed.employmentHistory && parsed.employmentHistory.length > 0) ? parsed.employmentHistory : (parsed.employment_history && parsed.employment_history.length > 0) ? parsed.employment_history : (parsed.employment && parsed.employment.length > 0) ? parsed.employment : formData.employmentHistory,
-        additionalDetails: safeAdditionalDetails(getParsedOrExisting(['additionalDetails', 'additional_details', 'otherDetails', 'additionalInfo'], formData.additionalDetails))
+        additionalDetails: safeAdditionalDetails(additionalDetails)
       };
 
       setFormData(parsedForm);
@@ -741,6 +713,18 @@ console.log('✅ Parsed data:', parsed);
     };
   };
 
+  function convertToWordHTML(text) {
+    if (!text) return "";
+
+    return text
+      .replace(/---/g, '')              // remove separators
+      .replace(/\n\n/g, '\n\n')   // preserve spacing
+      .replace(/\n/g, '\n')          // line breaks
+      .replace(/\*\*(.*?)\*\*/g, (_, p1) => p1.toUpperCase()) // uppercase
+      .replace(/#{2,3}(.*?)/g, (_, p1) => p1.toUpperCase())      // headings
+      .trim(); 
+  }
+
   // Download using template file from assets
   const downloadUsingTemplate = async (data, photo) => {
     try {
@@ -793,7 +777,6 @@ console.log('✅ Parsed data:', parsed);
 
       const imageModule = new ImageModule(imageOpts);
 
-      // Create docxtemplater instance
       const doc = new Docxtemplater(zip, {
         paragraphLoop: true,
         linebreaks: true,
@@ -836,7 +819,7 @@ console.log('✅ Parsed data:', parsed);
           technology: emp.technology || '',
           role: emp.role || ''
         })),
-        additionalDetails: (data.additionalDetails || '').replace(/^ {5}/gm, '\t'),
+        additionalDetails: convertToWordHTML(data.additionalDetails),
         hasAdditionalDetails: !!(data.additionalDetails && data.additionalDetails.trim()),
         photo: photo || '',
         hasPhoto: !!photo
@@ -1876,7 +1859,7 @@ DOMAIN EXPERTISE
                       <h1 className="text-center m-0">ADDITIONAL PROFESSIONAL INFORMATION</h1>
                     </div>
                     <div className="mt-6 ml-20 mr-20 mb-8">
-                      <div className="footerText whitespace-pre-line" style={{ whiteSpace: 'pre-wrap',lineHeight: '1.6' }}>{formData.additionalDetails}</div>
+                      <div className="footerText whitespace-pre-line" style={{ whiteSpace: 'pre-wrap',lineHeight: '1.6' }}>{convertToWordHTML(formData.additionalDetails)}</div>
                     </div>
                   </>
                 )}
